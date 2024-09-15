@@ -13,9 +13,15 @@ if (!isset($_SESSION['userId'])) {
     $_SESSION['userId'] = $_SESSION['userId'];
 }
 
-// Consulta para pegar as casas cadastradas
-$sql = "SELECT * FROM rent";
-$result = $con->query($sql);
+// Obter o userId da sessão
+$userId = $_SESSION['userId'];
+
+// Consulta para pegar as casas cadastradas apenas para o usuário atual
+$sql = "SELECT * FROM rent WHERE usuario_id = ?";
+$stmt = $con->prepare($sql);
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
 
 // Consulta para pegar as imagens associadas a cada casa
 $sqlImagens = "SELECT casa_id, nome_imagem FROM imagens";
@@ -59,8 +65,12 @@ while ($rowImagens = $resultImagens->fetch_assoc()) {
             $nome_casa = filter_input(INPUT_POST, 'research', FILTER_SANITIZE_SPECIAL_CHARS);
 
             if (!empty($nome_casa)) {
-                $result_parameters = "SELECT * FROM rent WHERE nome_casa LIKE '%$nome_casa%'";
-                $result_research = $con->query($result_parameters);
+                $result_parameters = "SELECT * FROM rent WHERE nome_casa LIKE ? AND usuario_id = ?";
+                $stmt_search = $con->prepare($result_parameters);
+                $like_nome_casa = "%$nome_casa%";
+                $stmt_search->bind_param("si", $like_nome_casa, $userId);
+                $stmt_search->execute();
+                $result_research = $stmt_search->get_result();
                 if ($result_research->num_rows > 0) {
                     echo "<table class='table'>";
                     echo "<thead><tr><th>Nome</th><th>Local</th><th>Preço</th><th>Preview de Imagem</th><th>Ações</th></tr></thead>";
@@ -75,7 +85,7 @@ while ($rowImagens = $resultImagens->fetch_assoc()) {
                         $casaId = $row_usuario['id'];
                         if (isset($imagensPorCasa[$casaId])) {
                             $imagem = $imagensPorCasa[$casaId];
-                            $caminhoDaImagem = "../admin/imagens/" . $row_usuario['usuario_id'] . "/" . $imagem;
+                            $caminhoDaImagem = "../admin/imagens/" . $userId . "/" . $imagem;
                             
                             // Verificar se o arquivo realmente existe
                             if (file_exists($caminhoDaImagem)) {
@@ -126,7 +136,7 @@ while ($rowImagens = $resultImagens->fetch_assoc()) {
                         $casaId = $row['id'];
                         if (isset($imagensPorCasa[$casaId])) {
                             $imagem = $imagensPorCasa[$casaId];
-                            $caminhoDaImagem = "../admin/imagens/" . $row['usuario_id'] . "/" . $imagem;
+                            $caminhoDaImagem = "../admin/imagens/" . $userId . "/" . $imagem;
 
                             // Verificar se o arquivo realmente existe
                             if (file_exists($caminhoDaImagem)) {
